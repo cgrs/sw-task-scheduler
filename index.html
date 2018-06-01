@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>ServiceWorker demo</title>
+    <link rel="stylesheet" href="./css/index.css">
+    <link href="https://fonts.googleapis.com/css?family=Anonymous+Pro|IBM+Plex+Sans" rel="stylesheet">
+</head>
+
+<body>
+    <fieldset>
+        <select name="kind" id="kind">
+            <option disabled selected>Kind</option>
+            <option value="task">Task</option>
+            <option value="notification">Notification</option>
+        </select>
+        <input type="text" name="title" placeholder="Title">
+        <textarea name="options" id="options" placeholder="insert valid JSON here" rows="10"></textarea>
+        <button id="send">Send</button>
+    </fieldset>
+    <script src="./src/index.js"></script>
+</body>
+
+</html>

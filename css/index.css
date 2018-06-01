@@ -1,0 +1,53 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    display: grid;
+}
+
+body * {
+    box-sizing: content-box;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+
+fieldset {
+    border: none;
+    display: grid;
+    margin: auto;
+    width: fit-content;
+    justify-content: center;
+    align-content: center;
+}
+
+fieldset > * {
+    margin: 5px;
+    width: 100%;
+    resize: none;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 1px;
+    padding: 2px;
+    background-color: transparent;
+    font-size: 1.2em;
+}
+
+fieldset > *:focus {
+    outline: none;
+    border: 1px solid #000;
+}
+
+button {
+    transition: all 90ms;
+}
+
+button:active {
+    transform: translateY(2px);
+    background-color: rgba(0,0,0,0.2);
+}
+
+textarea {
+    font-family: 'Anonymous Pro', monospace;
+}
