@@ -6,6 +6,25 @@ if ('serviceWorker' in navigator) {
         .then(perm => {
             if (perm === 'granted') {
                 navigator.serviceWorker.ready.then(swReg => {
+                    swReg.pushManager.getSubscription().then(subscription => {
+                        let isSubscribed = !(subscription === null)
+
+                        if (!isSubscribed) {
+                            console.log('user not subscribed')
+                            getVAPIDkey().then(key => {
+                                swReg.pushManager.subscribe({
+                                    userVisibleOnly: true,
+                                    applicationServerKey : key
+                                })
+                            }).then(subscription => {
+                                console.log('user subscribed')
+                                console.log(subscription)
+                            }).catch(err => console.error(err))
+                        }
+                        else { // subscribed
+                            console.log(`user subscribed:`, subscription)
+                        }
+                    }, console.error)
                     init()
                     // navigator.serviceWorker.controller.postMessage({
                     //     kind: 'notification',
@@ -93,4 +112,23 @@ function init() {
         // relay messages back to worker
         navigator.serviceWorker.controller.postMessage(event.data)
     })
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4)
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/')
+
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+
+    for (let i = 0; i < rawData.length; ++i)
+        outputArray[i] = rawData.charCodeAt(i)
+    return outputArray
+}
+
+async function getVAPIDkey() {
+    const request = await fetch('/vapidkey')
+    return urlBase64ToUint8Array((await request.json()).publicKey)
 }

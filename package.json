@@ -1,0 +1,26 @@
+{
+  "name": "sw-task-scheduler",
+  "version": "0.1.0",
+  "description": "ServiceWorker task scheduler proof-of-concept",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgrs/sw-task-scheduler.git"
+  },
+  "author": "carlos gonzález <carlos.gonzalez@kairosds.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cgrs/sw-task-scheduler/issues"
+  },
+  "homepage": "https://github.com/cgrs/sw-task-scheduler#readme",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "dotenv": "^5.0.1",
+    "express": "^4.16.3",
+    "morgan": "^1.9.0",
+    "web-push": "^3.3.1"
+  }
+}
