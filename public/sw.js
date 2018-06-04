@@ -3,12 +3,12 @@ importScripts('./src/task.js')
 let pendingTasks, doneTasks
 
 self.addEventListener('install', event => {
-    pendingTasks = new Set()
-    doneTasks = new Set()
     event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', event => {
+    pendingTasks = new Set()
+    doneTasks = new Set()
     event.waitUntil(clients.claim())
 
     setInterval(function () {
@@ -16,7 +16,20 @@ self.addEventListener('activate', event => {
             for (task of pendingTasks) {
                 if (!task.done && task.date.getTime() <= new Date().getTime()) {
                     task.run().then(task => {
-                        self.clients.matchAll().then(clientList => {
+                        console.log(task, `has run`)
+                        self.registration.pushManager.getSubscription().then(subscription => {
+                            fetch('/notification', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    subscription,
+                                    payload: JSON.stringify(task)
+                                })
+                            })
+                        })
+/*                         self.clients.matchAll().then(clientList => {
                             clientList.forEach(client => {
                                 // broadcast a notification message
                                 client.postMessage({
@@ -29,7 +42,7 @@ self.addEventListener('activate', event => {
                                     }
                                 })
                             })
-                        }).catch(err => console.log(err))
+                        }).catch(err => console.log(err)) */
                         doneTasks.add(task)
                         pendingTasks.delete(task)
                     })
@@ -60,4 +73,13 @@ self.addEventListener('message', event => {
 
 self.addEventListener('notificationclose', event => {
     console.log(event.notification, `was closed`)
+})
+
+self.addEventListener('push', event => {
+    console.log('push received:', event)
+    let payload = event.data ? event.data.json() : undefined
+    console.log(payload)
+    event.waitUntil(self.registration.showNotification(`task ${payload.name} has run`, {
+        body: `at ${payload.date}`
+    }))
 })

@@ -17,11 +17,6 @@ When a user sends a `task` message to the service worker:
 ```bash
 $ git clone https://github.com/cgrs/sw-task-scheduler.git
 $ cd sw-task-scheduler
-$ # run a web server at project root
-$ # for Python 2.x
-$ python -m SimpleHTTPServer
-$ # for Python 3.x
-$ python3 -m http.server
-$ # for node
-$ http-server # npm i -g http-server
+$ npm install
+$ npm start
 ```
