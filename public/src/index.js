@@ -1,134 +1,126 @@
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js', {
-        scope: '/'
-    })
-        .then(() => Notification.requestPermission())
-        .then(perm => {
-            if (perm === 'granted') {
-                navigator.serviceWorker.ready.then(swReg => {
-                    swReg.pushManager.getSubscription().then(subscription => {
-                        let isSubscribed = !(subscription === null)
+; !function () {
+    function $(selector){let elements=Array.from(document.querySelectorAll(selector));return elements.length===1?elements[0]:elements}
 
-                        if (!isSubscribed) {
-                            console.log('user not subscribed')
-                            getVAPIDkey().then(key => {
-                                swReg.pushManager.subscribe({
-                                    userVisibleOnly: true,
-                                    applicationServerKey : key
-                                })
-                            }).then(subscription => {
-                                console.log('user subscribed')
-                                console.log(subscription)
-                            }).catch(err => console.error(err))
-                        }
-                        else { // subscribed
-                            console.log(`user subscribed:`, subscription)
-                        }
-                    }, console.error)
-                    init()
-                    // navigator.serviceWorker.controller.postMessage({
-                    //     kind: 'notification',
-                    //     notification: {
-                    //         title: 'Ready!',
-                    //         options: {}
-                    //     }
-                    // })
+    const messaging = firebase.messaging(),
+        database = firebase.database(),
+        auth = firebase.auth()
+    // ,publicVapidKey = `BL51qF8ZnSEuFtalek9eb1VCaVPQQRWgU03Gn8hamrAXq_t2qvpqb26ci2kEoOa6L2aDK0atPdEf_sgME5NEXxA`
+
+    auth.onAuthStateChanged(handleAuthStateChanged)
+
+    function handleAuthStateChanged(user) {
+        if (user) {
+            console.log(user, 'logged in')
+            registerServiceWorker()
+            toggleUI()
+        } else {
+            console.log('no user logged in')
+            unregisterServiceWorker()
+        }
+    }
+
+    function toggleUI() {
+        toggleForm()
+        toggleLoginButton()
+    }
+
+    function unregisterServiceWorker() {
+        if ('serviceWorker' in navigator && !!navigator.serviceWorker.controller) {
+            if (/\/sw\.js$/.test(navigator.serviceWorker.controller.scriptURL)) {
+                navigator.serviceWorker.getRegistration()
+                .then(reg => reg.unregister())
+                .then(() => {
+                    console.log(`service worker unregistered`)
                 })
             }
+        }    
+    }
+
+    function toggleLoginButton() {
+        $('button#login').classList.toggle('hidden')
+    }
+
+    function toggleForm() {
+        $('input, button:not(#login)').map(el => el.classList.toggle('hidden'))
+    }
+
+    function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            if (!!navigator.serviceWorker.controller)
+                return // already registered worker
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    messaging.useServiceWorker(reg)
+                    console.log(`service worker registered`)
+                    // assume user is logged in
+                    messaging.getToken().then(token => {
+                        addUserToDatabase(auth.currentUser, token)
+                    })
+                })
+        }
+        else {
+            document.body.innerHTML =
+                '<p class="centered">' +
+                'Service workers are not supported. ' +
+                'Please <a href="https://browsehappy.com/" target="_blank">' +
+                'upgrade your browser</a>.</p>'
+        }
+    }
+
+    function setup() {
+        const inputTitle = $('input#title'),
+               inputDate = $('input#date'),
+                    form = $('form#main-form'),
+                     now = new Date()
+
+        inputDate.value = now.toISOString().slice(0, -8)
+
+        form.addEventListener('submit', sendNotification)
+
+        function sendNotification(event) {
+            event.preventDefault()
+            // TODO: send task to Database
+            addTaskToDatabase(new Task(inputTitle.value, inputDate.value))
+        }
+
+        messaging.onMessage(payload => {
+            console.log(payload, 'received')
+            // TODO: show notification
+            showNotification(payload.notification)
         })
-}
 
-function init() {
-    const button = document.querySelector('button#send'),
-        kind = document.querySelector('select#kind'),
-        title = document.querySelector('input[name="title"]')
-    let options = document.querySelector('#options'),
-        container = options.parentElement
+        $('button#login').addEventListener('click', showPopupLogin)
+        $('button#logout').addEventListener('click', logOut)
 
-    function validate() {
-        try {
-            return kind.value !== "Kind" && 
-                   title.value && 
-                   (options.type === 'datetime-local' || options.value === '' || JSON.parse(options.value))
-        } catch (error) {
-            return false
+        function logOut() {
+            toggleUI()
+            return auth.signOut()
+        }
+        function showPopupLogin() {
+            return auth.signInWithPopup(new firebase.auth.GoogleAuthProvider)
         }
     }
 
-    function sendMessage() {
-        if (!validate()) return
-        const message = createMessage()
-        navigator.serviceWorker.controller.postMessage(message)
+    function addTaskToDatabase(task) {
+        return database.ref('/events').push(task, () => {
+            console.log('added', task)
+        })
     }
 
-    function createMessage() {
-        if (kind.value === 'task') {
-            return {
-                kind: 'task',
-                task: {
-                    name: title.value,
-                    date: new Date(options.value || Date.now())
-                }
-            }
-        }
-        else {
-            try {
-                return {
-                    kind: 'notification',
-                    notification: {
-                        title: title.value,
-                        options: JSON.parse(options.value)
-                    }
-                }
-            } catch (error) {
-                return {
-                    kind: 'notification',
-                    notification: {
-                        title: title.value,
-                        options: {}
-                    }
-                }
-            }
-        }
+    function addUserToDatabase(user, token) {
+        return database.ref(`/users/${user.uid}`).set({
+            email: user.email,
+            token 
+        }, () => {
+            console.log('added', user)
+        })
     }
-    
-    button.addEventListener('click', sendMessage)
 
-    kind.addEventListener('change', ev => {
-        let element = document.createElement((kind.value === 'task')?'input': 'textarea')
-        element.id = 'options'
-        if (kind.value === 'task') {
-            element.type = 'datetime-local'
-        }
-        else {
-            element.setAttribute('placeholder', 'insert valid JSON here')
-            element.setAttribute('rows', 10)
-        }
-        container.replaceChild(element, options)
-        options = element
-    })
+    function showNotification(notification) {
+        return new Notification(notification.title, {
+            body: notification.body
+        })
+    }
 
-    navigator.serviceWorker.addEventListener('message', event => {
-        // relay messages back to worker
-        navigator.serviceWorker.controller.postMessage(event.data)
-    })
-}
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4)
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/')
-
-    const rawData = window.atob(base64)
-    const outputArray = new Uint8Array(rawData.length)
-
-    for (let i = 0; i < rawData.length; ++i)
-        outputArray[i] = rawData.charCodeAt(i)
-    return outputArray
-}
-
-async function getVAPIDkey() {
-    const request = await fetch('/vapidkey')
-    return urlBase64ToUint8Array((await request.json()).publicKey)
-}
+    document.addEventListener('DOMContentLoaded', setup)
+}()

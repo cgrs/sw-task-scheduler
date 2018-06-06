@@ -5,27 +5,29 @@ html, body {
     height: 100%;
 }
 
-body {
-    display: grid;
-}
-
 body * {
     box-sizing: content-box;
     font-family: 'IBM Plex Sans', sans-serif;
 }
-
-fieldset {
+main.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+form {
     border: none;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     margin: auto;
     width: fit-content;
     justify-content: center;
     align-content: center;
 }
 
-fieldset > * {
+form > * {
     margin: 5px;
-    width: 100%;
     resize: none;
     border: 1px solid rgba(0,0,0,0.2);
     border-radius: 1px;
@@ -34,13 +36,14 @@ fieldset > * {
     font-size: 1.2em;
 }
 
-fieldset > *:focus {
+form > *:focus {
     outline: none;
     border: 1px solid #000;
 }
 
 button {
     transition: all 90ms;
+    padding: 5px;
 }
 
 button:active {
@@ -50,4 +53,22 @@ button:active {
 
 textarea {
     font-family: 'Anonymous Pro', monospace;
+}
+
+.centered {
+    text-align: center;
+    align-self: center;
+}
+
+.title {
+    margin-top: 100px;
+}
+
+.form-input {
+    border: none;
+}
+
+.hidden {
+    visibility: hidden;
+    display: none;
 }

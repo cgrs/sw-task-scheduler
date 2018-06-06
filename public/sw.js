@@ -1,48 +1,46 @@
 importScripts('./src/task.js')
+importScripts('/__/firebase/5.0.0/firebase-app.js')
+importScripts('/__/firebase/5.0.0/firebase-messaging.js')
+importScripts('/__/firebase/5.0.0/firebase-functions.js')
+importScripts('/__/firebase/5.0.0/firebase-database.js')
+importScripts('/__/firebase/init.js')
+
+const messaging = firebase.messaging(),
+    functions = firebase.functions(),
+    database = firebase.database()
+
+messaging.setBackgroundMessageHandler(payload => {
+    console.log('message', payload, 'received')
+    return self.registration.showNotification('received!')
+})
 
 let pendingTasks, doneTasks
 
 self.addEventListener('install', event => {
+    pendingTasks = new Set()
+    doneTasks = new Set()
     event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', event => {
-    pendingTasks = new Set()
-    doneTasks = new Set()
     event.waitUntil(clients.claim())
 
     setInterval(function () {
-        if (pendingTasks.size !== 0 ) {
-            for (task of pendingTasks) {
-                if (!task.done && task.date.getTime() <= new Date().getTime()) {
+        if (pendingTasks.size !== 0) {
+            for (let task of pendingTasks) {
+                if (!task.done && new Date(task.date).getTime() <= new Date().getTime()) {
                     task.run().then(task => {
-                        console.log(task, `has run`)
-                        self.registration.pushManager.getSubscription().then(subscription => {
-                            fetch('/notification', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    subscription,
-                                    payload: JSON.stringify(task)
-                                })
+                        messaging.getToken().then(token => {
+                            functions.httpsCallable('sendNotification')({
+                                token,
+                                notification: {
+                                    title: 'yay',
+                                    body: 'fcm through firebase functions!'
+                                }
                             })
+                            console.log(task, `has run`)
                         })
-/*                         self.clients.matchAll().then(clientList => {
-                            clientList.forEach(client => {
-                                // broadcast a notification message
-                                client.postMessage({
-                                    kind: 'notification',
-                                    notification: {
-                                        title: `task ${task.name} has run`,
-                                        options: {
-                                            body: `at ${task.date}`
-                                        }
-                                    }
-                                })
-                            })
-                        }).catch(err => console.log(err)) */
+                        updateTask(task)
                         doneTasks.add(task)
                         pendingTasks.delete(task)
                     })
@@ -53,33 +51,38 @@ self.addEventListener('activate', event => {
 })
 
 self.addEventListener('message', event => {
-    switch(event.data.kind) {
-        case 'task':
-            const task = Object.assign(new Task(), event.data.task)
-            pendingTasks.add(task)
-            console.log(`task`, task, `added`)
-            break
-        case 'notification':
-            self.registration.showNotification(event.data.notification.title, event.data.notification.options)
-            break
-        case 'status': 
-            console.log(`pending tasks: ${pendingTasks.size}`, pendingTasks)
-            console.log(`tasks done: ${doneTasks.size}`, doneTasks)
-            break
-        case 'default':
-            break
-    }
+    const task = Object.assign(new Task(), event.data.task)
+    pendingTasks.add(task)
+    console.log(`task`, task, `added`)
 })
 
 self.addEventListener('notificationclose', event => {
     console.log(event.notification, `was closed`)
 })
 
-self.addEventListener('push', event => {
-    console.log('push received:', event)
-    let payload = event.data ? event.data.json() : undefined
-    console.log(payload)
-    event.waitUntil(self.registration.showNotification(`task ${payload.name} has run`, {
-        body: `at ${payload.date}`
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    event.waitUntil(clients.matchAll({
+        type: 'window'
+    }).then(clientList => {
+        clientList.filter(client => client.url === '/' && 'focus' in client).map(client => client.focus())
+        if (clients.openWindow) return clients.openWindow('/')
     }))
 })
+
+database.ref('/events').orderByChild('date').on('child_added', newEvent => {
+    console.log(`new child added`)
+    pendingTasks.add(Object.assign(new Task(), newEvent.val()))
+})
+
+function updateTask(task) {
+    database.ref('/events').once('value').then(snapshot => {
+        let values = snapshot.val()
+        for (let key in values) {
+            if (!values[key].done && new Date(task.date).getTime() === new Date(values[key].date).getTime()) {
+                values[key].done = true
+                database.ref(`/events/${key}`).set(values[key])
+            }
+        }
+    })
+}

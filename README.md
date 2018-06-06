@@ -17,6 +17,5 @@ When a user sends a `task` message to the service worker:
 ```bash
 $ git clone https://github.com/cgrs/sw-task-scheduler.git
 $ cd sw-task-scheduler
-$ npm install
-$ npm start
+$ firebase serve
 ```
